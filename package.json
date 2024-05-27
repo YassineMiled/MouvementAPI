@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@mediapipe/holistic": "^0.5.1675471629",
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2"
+  }
+}

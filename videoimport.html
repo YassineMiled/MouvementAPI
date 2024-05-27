@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Importer et Analyser Vidéo</title>
+    <nav>
+        <a href="index.html">Retour à la Capture Vidéo</a>
+    </nav>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        video, canvas {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <input type="file" accept="video/*" id="videoUpload">
+        <video id="uploadedVideo" controls></video>
+        <canvas id="outputCanvas" width="1280" height="720"></canvas>
+    </div>
+    <script src="scriptvideo.js"></script>
+</body>
+<a href="Confirmation.html">Telecharger les resultats</a>
+</html>
