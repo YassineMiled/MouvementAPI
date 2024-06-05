@@ -6,8 +6,15 @@ const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
 
+// Variables pour stocker les logs
+let logs = [];
+
 // Fonction pour gérer les résultats
 function onResults(results) {
+  // Convertir les résultats au format string
+  const logData = JSON.stringify(results);
+  logs.push(logData);
+
   // Afficher les résultats dans la console
   console.log('Résultats :', results);
 
@@ -56,6 +63,18 @@ function onResults(results) {
   canvasCtx.restore();
 }
 
+// Fonction pour télécharger les logs sous forme de fichier texte
+function downloadLogs() {
+  const logBlob = new Blob([logs.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(logBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'logs.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 // Initialiser Holistic
 const holistic = new Holistic({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
@@ -80,3 +99,6 @@ const camera = new Camera(videoElement, {
   height: 720
 });
 camera.start();
+
+// Ajouter l'événement au bouton de téléchargement des logs
+document.getElementById('downloadLogs').addEventListener('click', downloadLogs);

@@ -26,7 +26,7 @@
     <input type="file" id="videoUpload" accept="video/*">
     <video id="uploadedVideo" controls></video>
     <input type="file" id="imageUpload" accept="image/*">
-    <img id="uploadedImage" style="display:none;">
+    <img id="uploadedImage">
     <canvas class="output_canvas" id="outputCanvas"></canvas>
     <br><br>
     <button id="downloadLogs">Télécharger les données</button>
@@ -43,48 +43,17 @@
         const canvasCtx = canvasElement.getContext('2d');
 
         let logs = [];
-        let fileName = 'logs.csv';
+        let fileName = 'logs.txt';
 
         function downloadLogs() {
-            const csvContent = convertLogsToCSV(logs);
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(logs, { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = fileName;
+            a.download = fileName.replace(/\.[^/.]+$/, "") + '.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        }
-
-        function convertLogsToCSV(logs) {
-            const headers = [
-                "timestamp",
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_x`),
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_y`),
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_z`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_x`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_y`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_z`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_x`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_y`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_z`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_x`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_y`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_z`)
-            ];
-
-            const rows = logs.map((log, index) => {
-                const result = JSON.parse(log);
-                const timestamp = new Date().toISOString();
-                const poseLandmarks = result.poseLandmarks ? result.poseLandmarks.flatMap(p => [p.x, p.y, p.z]) : Array(99).fill("");
-                const faceLandmarks = result.faceLandmarks ? result.faceLandmarks.flatMap(f => [f.x, f.y, f.z]) : Array(1404).fill("");
-                const leftHandLandmarks = result.leftHandLandmarks ? result.leftHandLandmarks.flatMap(l => [l.x, l.y, l.z]) : Array(63).fill("");
-                const rightHandLandmarks = result.rightHandLandmarks ? result.rightHandLandmarks.flatMap(r => [r.x, r.y, r.z]) : Array(63).fill("");
-                return [timestamp, ...poseLandmarks, ...faceLandmarks, ...leftHandLandmarks, ...rightHandLandmarks];
-            });
-
-            return [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
         }
 
         function onResults(results) {
@@ -146,7 +115,7 @@
 
         videoUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name.replace(/\.[^/.]+$/, "") + '.csv';
+            fileName = file.name;
             const url = URL.createObjectURL(file);
             videoElement.src = url;
 
@@ -160,7 +129,7 @@
 
         imageUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name.replace(/\.[^/.]+$/, "") + '.csv';
+            fileName = file.name;
             const url = URL.createObjectURL(file);
             imageElement.src = url;
 
