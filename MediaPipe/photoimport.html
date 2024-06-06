@@ -33,6 +33,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         console.log('Script chargé');
@@ -43,17 +44,44 @@
         const canvasCtx = canvasElement.getContext('2d');
 
         let logs = [];
-        let fileName = 'logs.txt';
+        let fileName = 'logs.xlsx';
+
+        const landmarkNames = [
+            "nose", "left_eye_inner", "left_eye", "left_eye_outer", "right_eye_inner", "right_eye", "right_eye_outer",
+            "left_ear", "right_ear", "mouth_left", "mouth_right", "left_shoulder", "right_shoulder", "left_elbow",
+            "right_elbow", "left_wrist", "right_wrist", "left_pinky", "right_pinky", "left_index", "right_index",
+            "left_thumb", "right_thumb", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle",
+            "left_heel", "right_heel", "left_foot_index", "right_foot_index"
+        ];
+
+        function convertResultsToExcel(results) {
+            let headers = landmarkNames;
+            let xValues = [];
+            let yValues = [];
+            let zValues = [];
+
+            if (results.poseLandmarks) {
+                results.poseLandmarks.forEach((landmark) => {
+                    xValues.push(landmark.x);
+                    yValues.push(landmark.y);
+                    zValues.push(landmark.z);
+                });
+            }
+
+            let ws_data = [headers, xValues, yValues, zValues];
+            let ws = XLSX.utils.aoa_to_sheet(ws_data);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Landmarks");
+
+            return wb;
+        }
 
         function downloadLogs() {
-            const blob = new Blob(logs, { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName.replace(/\.[^/.]+$/, "") + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            if (logs.length > 0) {
+                const results = JSON.parse(logs[logs.length - 1]);
+                const workbook = convertResultsToExcel(results);
+                XLSX.writeFile(workbook, fileName);
+            }
         }
 
         function onResults(results) {
@@ -79,20 +107,6 @@
                 drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#FF0000', lineWidth: 2});
             }
 
-            if (results.faceLandmarks) {
-                drawConnectors(canvasCtx, results.faceLandmarks, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
-            }
-
-            if (results.leftHandLandmarks) {
-                drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS, {color: '#CC0000', lineWidth: 5});
-                drawLandmarks(canvasCtx, results.leftHandLandmarks, {color: '#00FF00', lineWidth: 2});
-            }
-
-            if (results.rightHandLandmarks) {
-                drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00CC00', lineWidth: 5});
-                drawLandmarks(canvasCtx, results.rightHandLandmarks, {color: '#FF0000', lineWidth: 2});
-            }
-
             canvasCtx.restore();
         }
 
@@ -115,7 +129,7 @@
 
         videoUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name;
+            fileName = file.name.replace(/\.[^/.]+$/, "") + '.xlsx';
             const url = URL.createObjectURL(file);
             videoElement.src = url;
 
@@ -129,7 +143,7 @@
 
         imageUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name;
+            fileName = file.name.replace(/\.[^/.]+$/, "") + '.xlsx';
             const url = URL.createObjectURL(file);
             imageElement.src = url;
 

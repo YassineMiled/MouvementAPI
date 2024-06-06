@@ -26,13 +26,14 @@
     <input type="file" id="videoUpload" accept="video/*">
     <video id="uploadedVideo" controls></video>
     <input type="file" id="imageUpload" accept="image/*">
-    <img id="uploadedImage" style="display:none;">
+    <img id="uploadedImage">
     <canvas class="output_canvas" id="outputCanvas"></canvas>
     <br><br>
     <button id="downloadLogs">Télécharger les données</button>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         console.log('Script chargé');
@@ -43,53 +44,54 @@
         const canvasCtx = canvasElement.getContext('2d');
 
         let logs = [];
-        let fileName = 'logs.csv';
+        let fileName = 'logs.xlsx';
 
-        function downloadLogs() {
-            const csvContent = convertLogsToCSV(logs);
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+        const landmarkNames = [
+            "nose", "left_eye_inner", "left_eye", "left_eye_outer", "right_eye_inner", "right_eye", "right_eye_outer",
+            "left_ear", "right_ear", "mouth_left", "mouth_right", "left_shoulder", "right_shoulder", "left_elbow",
+            "right_elbow", "left_wrist", "right_wrist", "left_pinky", "right_pinky", "left_index", "right_index",
+            "left_thumb", "right_thumb", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle",
+            "left_heel", "right_heel", "left_foot_index", "right_foot_index"
+        ];
+
+        function convertResultsToExcel(frames) {
+            let ws_data = [];
+            let headers = ['Landmarks/Frames'];
+
+            frames.forEach((frame, index) => {
+                headers.push(`Frame ${index + 1}`);
+            });
+            ws_data.push(headers);
+
+            for (let i = 0; i < landmarkNames.length; i++) {
+                let row = [landmarkNames[i]];
+                frames.forEach(frame => {
+                    if (frame.poseLandmarks) {
+                        const landmark = frame.poseLandmarks[i];
+                        row.push(`(${landmark.x.toFixed(3)},${landmark.y.toFixed(3)},${landmark.z.toFixed(3)})`);
+                    } else {
+                        row.push('(0,0,0)');
+                    }
+                });
+                ws_data.push(row);
+            }
+
+            let ws = XLSX.utils.aoa_to_sheet(ws_data);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Landmarks");
+
+            return wb;
         }
 
-        function convertLogsToCSV(logs) {
-            const headers = [
-                "timestamp",
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_x`),
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_y`),
-                ...Array.from({ length: 33 }, (_, i) => `poseLandmark_${i}_z`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_x`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_y`),
-                ...Array.from({ length: 468 }, (_, i) => `faceLandmark_${i}_z`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_x`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_y`),
-                ...Array.from({ length: 21 }, (_, i) => `leftHandLandmark_${i}_z`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_x`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_y`),
-                ...Array.from({ length: 21 }, (_, i) => `rightHandLandmark_${i}_z`)
-            ];
-
-            const rows = logs.map((log, index) => {
-                const result = JSON.parse(log);
-                const timestamp = new Date().toISOString();
-                const poseLandmarks = result.poseLandmarks ? result.poseLandmarks.flatMap(p => [p.x, p.y, p.z]) : Array(99).fill("");
-                const faceLandmarks = result.faceLandmarks ? result.faceLandmarks.flatMap(f => [f.x, f.y, f.z]) : Array(1404).fill("");
-                const leftHandLandmarks = result.leftHandLandmarks ? result.leftHandLandmarks.flatMap(l => [l.x, l.y, l.z]) : Array(63).fill("");
-                const rightHandLandmarks = result.rightHandLandmarks ? result.rightHandLandmarks.flatMap(r => [r.x, r.y, r.z]) : Array(63).fill("");
-                return [timestamp, ...poseLandmarks, ...faceLandmarks, ...leftHandLandmarks, ...rightHandLandmarks];
-            });
-
-            return [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        function downloadLogs() {
+            if (logs.length > 0) {
+                const workbook = convertResultsToExcel(logs);
+                XLSX.writeFile(workbook, fileName);
+            }
         }
 
         function onResults(results) {
-            const logData = JSON.stringify(results);
-            logs.push(logData);
+            logs.push(results);
             console.log('Résultats :', results);
 
             canvasCtx.save();
@@ -108,20 +110,6 @@
             if (results.poseLandmarks) {
                 drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
                 drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#FF0000', lineWidth: 2});
-            }
-
-            if (results.faceLandmarks) {
-                drawConnectors(canvasCtx, results.faceLandmarks, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
-            }
-
-            if (results.leftHandLandmarks) {
-                drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS, {color: '#CC0000', lineWidth: 5});
-                drawLandmarks(canvasCtx, results.leftHandLandmarks, {color: '#00FF00', lineWidth: 2});
-            }
-
-            if (results.rightHandLandmarks) {
-                drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00CC00', lineWidth: 5});
-                drawLandmarks(canvasCtx, results.rightHandLandmarks, {color: '#FF0000', lineWidth: 2});
             }
 
             canvasCtx.restore();
@@ -146,7 +134,7 @@
 
         videoUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name.replace(/\.[^/.]+$/, "") + '.csv';
+            fileName = file.name.replace(/\.[^/.]+$/, "") + '.xlsx';
             const url = URL.createObjectURL(file);
             videoElement.src = url;
 
@@ -160,7 +148,7 @@
 
         imageUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
-            fileName = file.name.replace(/\.[^/.]+$/, "") + '.csv';
+            fileName = file.name.replace(/\.[^/.]+$/, "") + '.xlsx';
             const url = URL.createObjectURL(file);
             imageElement.src = url;
 
